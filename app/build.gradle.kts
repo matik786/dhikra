@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.hidayah.app"
+    namespace = "com.dhikra.app"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.hidayah.app"
+        applicationId = "com.dhikra.app"
         minSdk = 26
         targetSdk = 34
         versionCode = 1

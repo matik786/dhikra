@@ -11,8 +11,19 @@ class WidgetAdvanceReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == ACTION_NEXT) {
-            VerseRepository(context).next()
-            AyahWidgetProvider.updateAll(context)
+            // Asset parsing + bitmap rendering are too heavy for the
+            // broadcast thread; finish the pending result off-thread.
+            val appContext = context.applicationContext
+            val pending = goAsync()
+            Thread {
+                try {
+                    VerseRepository(appContext).next()
+                    AyahWidgetProvider.updateAll(appContext)
+                } catch (_: Exception) {
+                } finally {
+                    pending.finish()
+                }
+            }.start()
         }
     }
 }

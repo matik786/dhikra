@@ -38,7 +38,22 @@ class App : Application() {
         fun ensurePrayerChannel(context: Context) {
             val prefs = PrayerPrefs(context)
             val nm = context.getSystemService(NotificationManager::class.java) ?: return
-            val sound: Uri = prefs.toneUri.takeIf { it.isNotBlank() }?.let { Uri.parse(it) }
+            val toneKey = prefs.toneUri // "" = system default
+            val vib = prefs.vibrationEnabled
+            val prevTone = prefs.appliedChannelTone
+            if (prevTone != null &&
+                (prevTone != toneKey || prefs.appliedChannelVibration != vib)
+            ) {
+                // Sound/vibration are immutable once a channel exists, so
+                // delete + recreate to make the new settings apply. Only on
+                // an actual change — never on plain app start — so user
+                // tweaks made in system Settings are not wiped.
+                try {
+                    nm.deleteNotificationChannel(PRAYER_CHANNEL_ID)
+                } catch (_: Exception) {
+                }
+            }
+            val sound: Uri = toneKey.takeIf { it.isNotBlank() }?.let { Uri.parse(it) }
                 ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
             val attrs = AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_NOTIFICATION)
@@ -49,9 +64,11 @@ class App : Application() {
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 setSound(sound, attrs)
-                enableVibration(prefs.vibrationEnabled)
+                enableVibration(vib)
             }
             nm.createNotificationChannel(channel)
+            prefs.appliedChannelTone = toneKey
+            prefs.appliedChannelVibration = vib
         }
     }
 

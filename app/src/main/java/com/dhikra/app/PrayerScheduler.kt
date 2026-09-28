@@ -36,7 +36,10 @@ object PrayerScheduler {
         val prefs = PrayerPrefs(context)
         if (!prefs.masterEnabled) return
 
-        val loc = resolveLocation(context, prefs) ?: return
+        val loc = resolveLocation(context, prefs)
+        // loc may be null (no permission / no fix yet): manual overrides and
+        // the mosque cache need no location, so keep going and let each
+        // prayer resolve what it can.
         val now = Calendar.getInstance()
         val nowMin = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
         val method = PrayTimes.METHODS[prefs.methodIndex.coerceIn(PrayTimes.METHODS.indices)]
@@ -85,16 +88,18 @@ object PrayerScheduler {
     }
 
     private fun prayerTimeMinutes(
-        now: Calendar, loc: Pair<Double, Double>,
+        now: Calendar, loc: Pair<Double, Double>?,
         method: PrayTimes.CalcMethod, prefs: PrayerPrefs, name: String
     ): Int? {
-        // 1. Manual HH:MM override wins.
+        // 1. Manual HH:MM override wins (needs no location).
         PrayTimes.parseMinutes(prefs.overrideTime(name))?.let { return it }
         // 2. Same-day cached mosque schedule (only when a mosque is selected).
         if (prefs.selectedMosqueName.isNotBlank() && PrayerInfo.isCacheFresh(prefs)) {
             prefs.cachedScheduleTimes()[name]?.let { return it }
         }
-        // 3. Calculated fallback.
+        // 3. Calculated fallback — needs a location; otherwise this prayer
+        // is skipped rather than blocking every other prayer.
+        if (loc == null) return null
         val t = PrayTimes.getTimes(now, loc.first, loc.second, method, prefs.hanafiAsr)
         val hours = t.asMap()[name] ?: return null
         return ((hours * 60 + 0.5).toInt() % 1440 + 1440) % 1440

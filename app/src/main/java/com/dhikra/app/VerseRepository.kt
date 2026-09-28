@@ -6,9 +6,22 @@ import org.json.JSONObject
 
 class VerseRepository(private val context: Context) {
 
+    companion object {
+        /**
+         * Process-wide cache of the parsed rotation list. The ~3MB Quran
+         * asset is parsed once; every later repository instance reuses it
+         * instead of re-reading the asset on the calling thread.
+         */
+        @Volatile
+        private var cachedVerses: List<Ayah>? = null
+    }
+
     private val prefs = context.getSharedPreferences("ayah_prefs", Context.MODE_PRIVATE)
 
-    val verses: List<Ayah> by lazy { load() }
+    val verses: List<Ayah>
+        get() = cachedVerses ?: synchronized(VerseRepository) {
+            cachedVerses ?: load().also { cachedVerses = it }
+        }
 
     private fun key(surah: Int, ayah: Int): Long =
         (surah.toLong() shl 32) or (ayah.toLong() and 0xffffffffL)

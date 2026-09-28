@@ -17,7 +17,18 @@ import android.widget.RemoteViews
 class AyahWidgetProvider : AppWidgetProvider() {
 
     override fun onUpdate(context: Context, mgr: AppWidgetManager, ids: IntArray) {
-        updateAll(context)
+        // Rendering the widget bitmap is too heavy for the broadcast
+        // thread; finish the pending result off-thread.
+        val appContext = context.applicationContext
+        val pending = goAsync()
+        Thread {
+            try {
+                updateAll(appContext)
+            } catch (_: Exception) {
+            } finally {
+                pending.finish()
+            }
+        }.start()
     }
 
     companion object {

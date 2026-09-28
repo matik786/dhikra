@@ -94,6 +94,21 @@ class PrayerPrefs(context: Context) {
         get() = p.getBoolean("vibration", true)
         set(v) = p.edit().putBoolean("vibration", v).apply()
 
+    // ---- Notification channel bookkeeping ----
+    /**
+     * Tone URI + vibration flag the prayer channel was last (re)built with.
+     * Android locks a channel's sound/vibration after creation, so the
+     * channel must be deleted and recreated when these change. null tone =
+     * the channel has never been built by the app yet.
+     */
+    var appliedChannelTone: String?
+        get() = p.getString("channel_tone", null)
+        set(v) = p.edit().putString("channel_tone", v).apply()
+
+    var appliedChannelVibration: Boolean
+        get() = p.getBoolean("channel_vibration", false)
+        set(v) = p.edit().putBoolean("channel_vibration", v).apply()
+
     fun prayerEnabled(name: String): Boolean =
         p.getBoolean("enabled_$name", true)
 

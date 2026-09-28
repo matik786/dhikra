@@ -10,31 +10,38 @@ object PrayerInfo {
 
     /**
      * Source precedence per prayer: manual HH:MM override > mosque schedule
-     * cache (same day only) > calculated. Returns null when no location is
-     * available and no manual coordinates are set.
+     * cache (same day only) > calculated. Location is only needed for the
+     * calculated fallback, so manual overrides and a fresh mosque cache
+     * still resolve when location is unavailable. Returns null when no
+     * prayer has a resolvable time.
      */
     fun today(context: Context): List<PrayerTime>? {
         val prefs = PrayerPrefs(context)
-        val loc = PrayerScheduler.resolveLocation(context, prefs) ?: return null
+        val loc = PrayerScheduler.resolveLocation(context, prefs)
         val now = Calendar.getInstance()
         val method = PrayTimes.METHODS[prefs.methodIndex.coerceIn(PrayTimes.METHODS.indices)]
-        val calc = PrayTimes.getTimes(now, loc.first, loc.second, method, prefs.hanafiAsr).asMap()
+        val calc = loc?.let {
+            PrayTimes.getTimes(now, it.first, it.second, method, prefs.hanafiAsr).asMap()
+        }
         val cache = prefs.cachedScheduleTimes()
         val cacheFresh = isCacheFresh(prefs)
         val mosqueName = prefs.selectedMosqueName.trim()
-        return PrayerScheduler.PRAYERS.map { name ->
+        val list = PrayerScheduler.PRAYERS.mapNotNull { name ->
             val manual = PrayTimes.parseMinutes(prefs.overrideTime(name))
             when {
                 manual != null -> PrayerTime(name, manual, "Manual entry")
                 cacheFresh && cache.containsKey(name) ->
                     PrayerTime(name, cache.getValue(name), mosqueName.ifBlank { "Mosque" })
-                else -> {
-                    val h = calc[name] ?: return null
+                calc != null -> {
+                    val h = calc[name] ?: return@mapNotNull null
                     val min = ((h * 60 + 0.5).toInt() % 1440 + 1440) % 1440
                     PrayerTime(name, min, "Calculated")
                 }
+                // No location and no manual/cache time for this prayer.
+                else -> null
             }
         }
+        return list.ifEmpty { null }
     }
 
     /** Next upcoming prayer today (wraps to Fajr when all have passed). */

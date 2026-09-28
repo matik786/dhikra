@@ -524,6 +524,16 @@ class PrayerSettingsActivity : Activity() {
     // ---------- Save ----------
 
     private fun saveAll(quiet: Boolean) {
+        // Validate every input BEFORE writing any pref, so a bad value
+        // can't leave partially-saved state behind.
+        for (name in PrayerScheduler.PRAYERS) {
+            val raw = overrideInputs[name]?.text.toString()
+            if (raw.isNotBlank() && PrayTimes.parseMinutes(raw) == null) {
+                Toast.makeText(this, "Bad time for $name (use HH:MM)", Toast.LENGTH_SHORT).show()
+                return
+            }
+        }
+
         prefs.masterEnabled = masterSwitch.isChecked
 
         // Mosque selection from the nearby list.
@@ -566,10 +576,6 @@ class PrayerSettingsActivity : Activity() {
         for (name in PrayerScheduler.PRAYERS) {
             prefs.setPrayerEnabled(name, prayerSwitches[name]?.isChecked == true)
             val raw = overrideInputs[name]?.text.toString()
-            if (raw.isNotBlank() && PrayTimes.parseMinutes(raw) == null) {
-                Toast.makeText(this, "Bad time for $name (use HH:MM)", Toast.LENGTH_SHORT).show()
-                return
-            }
             prefs.setOverrideTime(name, raw.trim())
         }
 
