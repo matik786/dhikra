@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <attr name="dhikraBackground" format="color" />
+    <attr name="dhikraCard" format="color" />
+    <attr name="dhikraGold" format="color" />
+    <attr name="dhikraGoldBright" format="color" />
+    <attr name="dhikraText" format="color" />
+    <attr name="dhikraTextDim" format="color" />
+
+    <!-- Default: Burgundy Gold -->
+    <style name="Theme.Dhikra" parent="android:Theme.Material.NoActionBar">
+        <item name="dhikraBackground">#140B0B</item>
+        <item name="dhikraCard">#2A1214</item>
+        <item name="dhikraGold">#C9A227</item>
+        <item name="dhikraGoldBright">#F0D878</item>
+        <item name="dhikraText">#F5EFE2</item>
+        <item name="dhikraTextDim">#C9BBA6</item>
+        <item name="android:windowBackground">#140B0B</item>
+        <item name="android:colorAccent">#C9A227</item>
+        <item name="android:textColorPrimary">#F5EFE2</item>
+    </style>
+
+    <!-- Alternate: Emerald Night -->
+    <style name="Theme.Dhikra.Emerald" parent="android:Theme.Material.NoActionBar">
+        <item name="dhikraBackground">#0B1210</item>
+        <item name="dhikraCard">#14201C</item>
+        <item name="dhikraGold">#C9A227</item>
+        <item name="dhikraGoldBright">#F0D878</item>
+        <item name="dhikraText">#F2F5EF</item>
+        <item name="dhikraTextDim">#B7C2B0</item>
+        <item name="android:windowBackground">#0B1210</item>
+        <item name="android:colorAccent">#C9A227</item>
+        <item name="android:textColorPrimary">#F2F5EF</item>
+    </style>
+</resources>

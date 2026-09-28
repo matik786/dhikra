@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.dhikra.app"
+    android:versionCode="1"
+    android:versionName="1.0">
+
+    <uses-permission android:name="android.permission.SET_WALLPAPER" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
+    <application
+        android:name=".App"
+        android:allowBackup="true"
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:theme="@style/Theme.Dhikra">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <receiver
+            android:name=".AyahWidgetProvider"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/ayah_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".WidgetAdvanceReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.dhikra.app.ACTION_NEXT" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".RotateReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.dhikra.app.ACTION_ROTATE" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".PrayerReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.dhikra.app.ACTION_RESCHEDULE" />
+            </intent-filter>
+        </receiver>
+
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false"
+            android:label="Settings" />
+
+        <activity
+            android:name=".AppearanceActivity"
+            android:exported="false"
+            android:label="Appearance" />
+
+        <activity
+            android:name=".PrayerSettingsActivity"
+            android:exported="false"
+            android:label="Prayer reminder settings" />
+
+        <activity
+            android:name=".AboutActivity"
+            android:exported="false"
+            android:label="About" />
+
+        <activity
+            android:name=".VerseDetailActivity"
+            android:exported="false"
+            android:label="Verse" />
+    </application>
+</manifest>

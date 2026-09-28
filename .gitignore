@@ -1,0 +1,26 @@
+# Build outputs (manual aapt2/kotlinc/d8 pipeline)
+app/build/
+build/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Gradle
+.gradle/
+local.properties
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Backups and temp files
+*.bak
+*.tmp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
