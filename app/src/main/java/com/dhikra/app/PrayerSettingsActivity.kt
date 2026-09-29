@@ -2,6 +2,7 @@ package com.dhikra.app
 
 import android.Manifest
 import android.app.Activity
+import android.app.AlarmManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Typeface
@@ -9,6 +10,7 @@ import android.graphics.drawable.GradientDrawable
 import android.media.RingtoneManager
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.text.InputType
 import android.view.Gravity
 import android.view.View
@@ -47,6 +49,7 @@ class PrayerSettingsActivity : Activity() {
     private lateinit var lngInput: EditText
     private lateinit var coordRow: LinearLayout
     private lateinit var locPermLine: TextView
+    private lateinit var alarmPermLine: TextView
     private lateinit var leadChipRow: LinearLayout
     private lateinit var leadCustomInput: EditText
     private var leadMinutes: Int = 15
@@ -237,6 +240,12 @@ class PrayerSettingsActivity : Activity() {
             isChecked = prefs.vibrationEnabled
         }
         notifCard.addView(vibrationSwitch)
+        alarmPermLine = TextView(this).apply {
+            textSize = 13f
+            setPadding(0, (8 * dp).toInt(), 0, 0)
+        }
+        notifCard.addView(alarmPermLine)
+        updateAlarmPermLine()
         root.addView(notifCard)
 
         // ---- Manual overrides ----
@@ -293,6 +302,9 @@ class PrayerSettingsActivity : Activity() {
     override fun onResume() {
         super.onResume()
         if (UiPrefs(this).theme != appliedTheme) recreate()
+        // The user may have granted exact-alarm access in system Settings.
+        updateAlarmPermLine()
+        updateLocPermLine()
     }
 
     // ---------- UI helpers ----------
@@ -489,6 +501,41 @@ class PrayerSettingsActivity : Activity() {
 
     // ---------- Permissions ----------
 
+    private fun updateAlarmPermLine() {
+        if (Build.VERSION.SDK_INT < 31) {
+            alarmPermLine.setTextColor(pal.textDim)
+            alarmPermLine.text = "Exact alarms allowed"
+            alarmPermLine.setOnClickListener(null)
+            alarmPermLine.isClickable = false
+            return
+        }
+        val allowed = getSystemService(AlarmManager::class.java)
+            ?.canScheduleExactAlarms() == true
+        if (allowed) {
+            alarmPermLine.setTextColor(pal.textDim)
+            alarmPermLine.text = "Exact alarms allowed"
+            alarmPermLine.setOnClickListener(null)
+            alarmPermLine.isClickable = false
+        } else {
+            alarmPermLine.setTextColor(pal.gold)
+            alarmPermLine.text =
+                "Exact alarms not allowed — reminders may be late. Tap to enable."
+            alarmPermLine.isClickable = true
+            alarmPermLine.isFocusable = true
+            alarmPermLine.setOnClickListener {
+                try {
+                    startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
+                } catch (_: Exception) {
+                    Toast.makeText(
+                        this,
+                        "Enable exact alarms in system Settings",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+    }
+
     private fun updateLocPermLine() {
         val granted = checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) ==
                 PackageManager.PERMISSION_GRANTED
@@ -534,6 +581,24 @@ class PrayerSettingsActivity : Activity() {
             }
         }
 
+        // Manual coordinates: reject non-numeric, non-finite, and
+        // out-of-range values (only when manual mode is selected).
+        val manualId = (locGroup.getChildAt(1) as RadioButton).id
+        if (locGroup.checkedRadioButtonId == manualId) {
+            val lat = latInput.text.toString().trim().toDoubleOrNull()
+            val lng = lngInput.text.toString().trim().toDoubleOrNull()
+            if (lat == null || lng == null || !lat.isFinite() || !lng.isFinite() ||
+                lat !in -90.0..90.0 || lng !in -180.0..180.0
+            ) {
+                Toast.makeText(
+                    this,
+                    "Bad coordinates (latitude -90..90, longitude -180..180)",
+                    Toast.LENGTH_SHORT
+                ).show()
+                return
+            }
+        }
+
         prefs.masterEnabled = masterSwitch.isChecked
 
         // Mosque selection from the nearby list.
@@ -560,7 +625,6 @@ class PrayerSettingsActivity : Activity() {
         prefs.methodIndex = methodSpinner.selectedItemPosition
         val hanafiId = (asrGroup.getChildAt(0) as RadioButton).id
         prefs.hanafiAsr = asrGroup.checkedRadioButtonId == hanafiId
-        val manualId = (locGroup.getChildAt(1) as RadioButton).id
         prefs.locationMode = if (locGroup.checkedRadioButtonId == manualId) 1 else 0
         prefs.manualLat = latInput.text.toString().trim()
         prefs.manualLng = lngInput.text.toString().trim()

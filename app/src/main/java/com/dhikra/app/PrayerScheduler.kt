@@ -48,10 +48,17 @@ object PrayerScheduler {
             if (!prefs.prayerEnabled(name)) continue
             val prayerMin = prayerTimeMinutes(now, loc, method, prefs, name) ?: continue
             val remindMin = prayerMin - prefs.minutesBefore
-            if (remindMin <= nowMin) continue
+            // Prayer is later today but the lead window already started (or
+            // the reminder time fell before midnight): nudge ~1 minute from
+            // now instead of dropping the reminder entirely.
+            val effectiveRemindMin = when {
+                remindMin > nowMin -> remindMin
+                prayerMin > nowMin -> nowMin + 1
+                else -> continue
+            }
             val cal = Calendar.getInstance().apply {
-                set(Calendar.HOUR_OF_DAY, remindMin / 60)
-                set(Calendar.MINUTE, remindMin % 60)
+                set(Calendar.HOUR_OF_DAY, effectiveRemindMin / 60)
+                set(Calendar.MINUTE, effectiveRemindMin % 60)
                 set(Calendar.SECOND, 0)
                 set(Calendar.MILLISECOND, 0)
             }
@@ -105,11 +112,17 @@ object PrayerScheduler {
         return ((hours * 60 + 0.5).toInt() % 1440 + 1440) % 1440
     }
 
+    /** A cached fix older than this is treated as stale (e.g. after travel). */
+    private const val STALE_LOCATION_MS = 12 * 60 * 60 * 1000L
+
     fun resolveLocation(context: Context, prefs: PrayerPrefs): Pair<Double, Double>? {
         if (prefs.locationMode == 1) {
             val lat = prefs.manualLat.toDoubleOrNull()
             val lng = prefs.manualLng.toDoubleOrNull()
-            if (lat != null && lng != null) return lat to lng
+            // Defensive: non-finite or out-of-range coordinates are unusable.
+            if (lat != null && lng != null && lat.isFinite() && lng.isFinite() &&
+                lat in -90.0..90.0 && lng in -180.0..180.0
+            ) return lat to lng
             return null
         }
         val last = lastKnownLocation(context)
@@ -120,8 +133,17 @@ object PrayerScheduler {
                 requestFreshLocation(context)
             } catch (_: Exception) {
             }
+        } else if (System.currentTimeMillis() - last.time > STALE_LOCATION_MS) {
+            // Stale fix (e.g. user traveled since the last fix): request a
+            // fresh one. Still return the stale fix for now — better than
+            // nothing — and requestFreshLocation re-arms alarms via
+            // reschedule() when the fresh fix arrives.
+            try {
+                requestFreshLocation(context)
+            } catch (_: Exception) {
+            }
         }
-        return last
+        return last?.let { it.latitude to it.longitude }
     }
 
     /** Earliest time (ms) a fresh location request may be issued again. */
@@ -205,25 +227,26 @@ object PrayerScheduler {
     }
 
     @SuppressLint("MissingPermission")
-    private fun lastKnownLocation(context: Context): Pair<Double, Double>? {
+    private fun lastKnownLocation(context: Context): Location? {
         if (context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) !=
             PackageManager.PERMISSION_GRANTED
         ) return null
         val lm = context.getSystemService(LocationManager::class.java) ?: return null
+        // Keep the newest fix across providers, not just the first available.
+        var best: Location? = null
         for (provider in listOf(
             LocationManager.GPS_PROVIDER,
             LocationManager.NETWORK_PROVIDER,
             LocationManager.PASSIVE_PROVIDER
         )) {
             try {
-                lm.getLastKnownLocation(provider)?.let {
-                    return it.latitude to it.longitude
-                }
+                val loc = lm.getLastKnownLocation(provider) ?: continue
+                if (best == null || loc.time > best.time) best = loc
             } catch (_: SecurityException) {
                 return null
             }
         }
-        return null
+        return best
     }
 
     private fun prayerIntent(context: Context, prayer: String, prayerMin: Int): PendingIntent {

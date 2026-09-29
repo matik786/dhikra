@@ -87,9 +87,15 @@ class VerseRepository(private val context: Context) {
 
     fun current(): Ayah = verses[index()]
 
-    fun next(): Ayah {
+    /**
+     * Advances to the next verse. Synchronized on the companion object (not
+     * the instance) because callers construct fresh repository instances —
+     * next() runs on the UI thread and on widget background threads, and an
+     * unsynchronized read-increment-write could lose an advancement.
+     */
+    fun next(): Ayah = synchronized(VerseRepository) {
         val n = (index() + 1) % verses.size
         prefs.edit().putInt("index", n).apply()
-        return verses[n]
+        verses[n]
     }
 }
